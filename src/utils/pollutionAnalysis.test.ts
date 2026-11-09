@@ -63,6 +63,28 @@ test('aggregateDailySummaries aggregates hourly readings into valid daily statis
   assert.equal(summaries[1].avgAqi, 60);
 });
 
+test('aggregateDailySummaries preserves unavailable pollutant data as null', () => {
+  const summaries = aggregateDailySummaries(
+    [{
+      time: '2026-11-01T00:00',
+      timestamp: '2026-11-01T00:00',
+      europeanAqi: 20,
+      usAqi: 30,
+      pm2_5: null,
+      pm10: null,
+      no2: null,
+      o3: null,
+      so2: null,
+      co: null,
+    }],
+    'EAQI'
+  );
+
+  assert.equal(summaries[0].avgPm25, null);
+  assert.equal(summaries[0].avgPm10, null);
+  assert.equal(summaries[0].dominantPollutant, 'Unavailable');
+});
+
 test('generateRealDataInsights provides factual insights without hallucinating', () => {
   const insights = generateRealDataInsights(
     45,

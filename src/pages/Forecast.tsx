@@ -8,7 +8,7 @@ import {
   aggregateDailySummaries,
   detectPollutionSpikes,
 } from '../utils/pollutionAnalysis';
-import { getCategoryForScale } from '../utils/aqiCalculations';
+import { calculateIndAqi, getCategoryForScale } from '../utils/aqiCalculations';
 import {
   ResponsiveContainer,
   LineChart,
@@ -53,7 +53,11 @@ export function Forecast({ hourlyData, currentData, scale }: ForecastProps) {
   // Chart points for 24h & 3-day view
   const chartData = activeForecastPoints.slice(0, 72).map((pt) => ({
     time: pt.time.replace('T', ' ').slice(5, 16),
-    predictedAqi: scale === 'EAQI' ? pt.europeanAqi : pt.usAqi,
+    predictedAqi: scale === 'EAQI'
+      ? pt.europeanAqi
+      : scale === 'USAQI'
+      ? pt.usAqi
+      : calculateIndAqi(pt.pm2_5, pt.pm10),
     predictedPm25: pt.pm2_5,
     predictedPm10: pt.pm10,
     predictedNo2: pt.no2,
@@ -70,7 +74,11 @@ export function Forecast({ hourlyData, currentData, scale }: ForecastProps) {
       : null;
 
   const next24hAqiList = next24h
-    .map((p) => (scale === 'EAQI' ? p.europeanAqi : p.usAqi))
+    .map((p) => scale === 'EAQI'
+      ? p.europeanAqi
+      : scale === 'USAQI'
+      ? p.usAqi
+      : calculateIndAqi(p.pm2_5, p.pm10))
     .filter((v): v is number => v !== null && !isNaN(v));
 
   const peakForecastAqi = next24hAqiList.length > 0 ? Math.max(...next24hAqiList) : null;
@@ -86,7 +94,7 @@ export function Forecast({ hourlyData, currentData, scale }: ForecastProps) {
               PREDICTED MODEL
             </span>
             <span className="text-xs text-[#94A3B8]">
-              Copernicus Atmosphere 72-Hour Simulation
+              Open-Meteo forecast using Copernicus CAMS
             </span>
           </div>
           <h2 className="text-2xl font-extrabold text-[#F8FAFC]">
@@ -109,16 +117,16 @@ export function Forecast({ hourlyData, currentData, scale }: ForecastProps) {
 
       {/* Current vs Forecast Comparison Highlights */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Current Observed Baseline */}
+        {/* Current CAMS model estimate */}
         <div className="bg-[#111C2D] border border-[#1F3045] rounded-2xl p-5 shadow-xl">
           <span className="text-xs uppercase tracking-wider text-[#94A3B8] font-semibold">
-            Current Telemetry Baseline
+            Current Model Estimate
           </span>
           <div className="text-3xl font-black font-mono text-[#F8FAFC] mt-2">
             {currentAqi ?? '--'} <span className="text-xs font-normal text-[#94A3B8]">{scale}</span>
           </div>
           <p className="text-xs text-[#94A3B8] mt-2">
-            Active measurement timestamp from ground model assimilation.
+            Latest available CAMS estimate for the selected location.
           </p>
         </div>
 
@@ -131,7 +139,7 @@ export function Forecast({ hourlyData, currentData, scale }: ForecastProps) {
             {peakForecastAqi ?? '--'} <span className="text-xs font-normal text-[#94A3B8]">{scale}</span>
           </div>
           <p className="text-xs text-[#94A3B8] mt-2">
-            Maximum anticipated concentration based on nocturnal boundary inversion.
+            Maximum AQI value among the available model forecast hours.
           </p>
         </div>
 
@@ -282,7 +290,7 @@ export function Forecast({ hourlyData, currentData, scale }: ForecastProps) {
                   <span className="text-[10px] font-mono text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded">
                     PREDICTED
                   </span>
-                </div>}
+                </div>
 
                 <div className="flex items-baseline gap-2 my-2">
                   <span className="text-3xl font-extrabold font-mono text-[#F8FAFC]">
@@ -304,11 +312,11 @@ export function Forecast({ hourlyData, currentData, scale }: ForecastProps) {
                   </div>
                   <div className="flex justify-between">
                     <span>Avg PM2.5:</span>
-                    <strong className="text-[#F8FAFC]">{day.avgPm25} µg/m³</strong>
+                    <strong className="text-[#F8FAFC]">{day.avgPm25 ?? 'N/A'} µg/m³</strong>
                   </div>
                   <div className="flex justify-between">
                     <span>Avg PM10:</span>
-                    <strong className="text-[#F8FAFC]">{day.avgPm10} µg/m³</strong>
+                    <strong className="text-[#F8FAFC]">{day.avgPm10 ?? 'N/A'} µg/m³</strong>
                   </div>
                 </div>
               </div>
@@ -318,7 +326,7 @@ export function Forecast({ hourlyData, currentData, scale }: ForecastProps) {
               </p>
             </div>
           ))}
-        </div>
+        </div>}
       </div>
 
       {/* Anticipated Anomaly Spikes Warning */}

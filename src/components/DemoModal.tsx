@@ -242,11 +242,11 @@ export function DemoModal({
                   BreatheX Interactive Platform Tour
                 </h3>
                 <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[9px] font-mono font-bold border border-emerald-500/20">
-                  LIVE DEMO
+                  SAMPLE TOUR
                 </span>
               </div>
               <p className="text-[11px] text-[#64748B]">
-                Discover next-generation environmental intelligence & real telemetry
+                Illustrative product tour; sample values below are not current API readings.
               </p>
             </div>
           </div>

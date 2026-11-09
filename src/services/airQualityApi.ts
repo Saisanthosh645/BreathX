@@ -4,8 +4,8 @@ import {
   LocationInfo,
 } from '../types/airQuality';
 import {
-  calculateUsAqi,
   calculateIndAqi,
+  calculateUsAqi,
   getDominantPollutant,
 } from '../utils/aqiCalculations';
 import { fetchWeatherData } from './weatherApi';
@@ -21,8 +21,12 @@ const liveCache = new Map<string, CacheEntry<{ current: CurrentAirQualityData; h
 const historyCache = new Map<string, CacheEntry<HourlyAirQualityPoint[]>>();
 const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
+function normalizeUtcTimestamp(timestamp: string): string {
+  return /(?:Z|[+-]\d{2}:\d{2})$/i.test(timestamp) ? timestamp : `${timestamp}Z`;
+}
+
 /**
- * Fetches current and hourly (past 7 days + forecast 4 days) air quality for given location
+ * Fetches current and hourly (past 30 days + forecast 4 days) air quality for given location
  */
 export async function fetchLiveAirQuality(
   location: LocationInfo
@@ -34,7 +38,7 @@ export async function fetchLiveAirQuality(
     return cached.data;
   }
 
-  const url = `${AIR_QUALITY_BASE_URL}?latitude=${location.latitude}&longitude=${location.longitude}&current=european_aqi,us_aqi,pm10,pm2_5,carbon_monoxide,nitrogen_dioxide,sulphur_dioxide,ozone&hourly=pm10,pm2_5,carbon_monoxide,nitrogen_dioxide,sulphur_dioxide,ozone,european_aqi,us_aqi&timezone=auto&timeformat=iso8601&past_days=30&forecast_days=4`;
+  const url = `${AIR_QUALITY_BASE_URL}?latitude=${location.latitude}&longitude=${location.longitude}&current=european_aqi,us_aqi,pm10,pm2_5,carbon_monoxide,nitrogen_dioxide,sulphur_dioxide,ozone&hourly=pm10,pm2_5,carbon_monoxide,nitrogen_dioxide,sulphur_dioxide,ozone,european_aqi,us_aqi&timezone=GMT&timeformat=iso8601&past_days=30&forecast_days=4`;
 
   let response: Response;
   try {
@@ -54,6 +58,9 @@ export async function fetchLiveAirQuality(
   const json = await response.json();
   const currentRaw = json.current || {};
   const hourlyRaw = json.hourly || {};
+  if (!currentRaw.time) {
+    throw new Error('Open-Meteo returned current data without a measurement timestamp.');
+  }
 
   // Fetch concurrent weather data
   const weather = await fetchWeatherData(location.latitude, location.longitude);
@@ -66,7 +73,7 @@ export async function fetchLiveAirQuality(
   const o3 = currentRaw.ozone != null ? Number(currentRaw.ozone) : null;
 
   const europeanAqi = currentRaw.european_aqi != null ? Number(currentRaw.european_aqi) : null;
-  // Calculate US AQI from PM2.5 and PM10 measurements if API doesn't provide or to ensure standard EPA alignment
+  // Use the provider's US AQI when available; otherwise calculate a particulate-only estimate.
   const calculatedUsAqi = currentRaw.us_aqi != null ? Number(currentRaw.us_aqi) : calculateUsAqi(pm25, pm10);
   const indAqi = calculateIndAqi(pm25, pm10);
 
@@ -81,7 +88,7 @@ export async function fetchLiveAirQuality(
 
   const current: CurrentAirQualityData = {
     location,
-    timestamp: currentRaw.time || new Date().toISOString(),
+    timestamp: normalizeUtcTimestamp(currentRaw.time),
     dataSource: 'Copernicus Atmospheric Monitoring Service (CAMS) via Open-Meteo Model',
     europeanAqi,
     usAqi: calculatedUsAqi,
@@ -113,7 +120,7 @@ export async function fetchLiveAirQuality(
   const nowEpoch = Date.now();
 
   for (let i = 0; i < times.length; i++) {
-    const t = times[i];
+    const t = normalizeUtcTimestamp(times[i]);
     const pointTime = new Date(t).getTime();
     const isForecast = pointTime > nowEpoch;
 
@@ -141,7 +148,7 @@ export async function fetchLiveAirQuality(
 }
 
 /**
- * Fetches historical air quality for specific date range
+ * Fetches historical CAMS model data for a specific date range.
  */
 export async function fetchHistoricalAirQuality(
   latitude: number,
@@ -156,9 +163,12 @@ export async function fetchHistoricalAirQuality(
     return cached.data;
   }
 
-  const url = `${AIR_QUALITY_BASE_URL}?latitude=${latitude}&longitude=${longitude}&hourly=pm10,pm2_5,carbon_monoxide,nitrogen_dioxide,sulphur_dioxide,ozone,european_aqi,us_aqi&start_date=${startDate}&end_date=${endDate}&timezone=auto&timeformat=iso8601`;
+  const url = `${AIR_QUALITY_BASE_URL}?latitude=${latitude}&longitude=${longitude}&hourly=pm10,pm2_5,carbon_monoxide,nitrogen_dioxide,sulphur_dioxide,ozone,european_aqi,us_aqi&start_date=${startDate}&end_date=${endDate}&timezone=GMT&timeformat=iso8601`;
 
   const res = await fetch(url);
+  if (res.status === 429) {
+    throw new Error('Open-Meteo API rate limit reached. Please wait before retrying historical data.');
+  }
   if (!res.ok) {
     throw new Error(`Failed to fetch historical data: HTTP ${res.status}`);
   }
@@ -169,7 +179,7 @@ export async function fetchHistoricalAirQuality(
   const points: HourlyAirQualityPoint[] = [];
 
   for (let i = 0; i < times.length; i++) {
-    const t = times[i];
+    const t = normalizeUtcTimestamp(times[i]);
     const ptPm25 = hourlyRaw.pm2_5?.[i] != null ? Number(hourlyRaw.pm2_5[i]) : null;
     const ptPm10 = hourlyRaw.pm10?.[i] != null ? Number(hourlyRaw.pm10[i]) : null;
 
@@ -193,8 +203,7 @@ export async function fetchHistoricalAirQuality(
 }
 
 /**
- * Fetches actual data for multiple grid locations around a center coordinate
- * Guaranteed real data without random or fake generation
+ * Fetches CAMS model estimates at multiple grid coordinates around a city.
  */
 export async function fetchGridPoints(
   centerLat: number,
@@ -207,6 +216,7 @@ export async function fetchGridPoints(
   longitude: number;
   europeanAqi: number | null;
   usAqi: number | null;
+  indAqi: number | null;
   pm25: number | null;
   pm10: number | null;
   no2: number | null;
@@ -215,43 +225,49 @@ export async function fetchGridPoints(
 }[]> {
   // Query actual coordinate offsets around the city (~10-15km model grid cells)
   const offsets = [
-    { label: `${cityName} Center`, dLat: 0, dLon: 0, type: 'Urban Core' },
-    { label: `${cityName} North Sector`, dLat: 0.1, dLon: 0.02, type: 'Regional Suburb' },
-    { label: `${cityName} South Sector`, dLat: -0.1, dLon: -0.02, type: 'Industrial Zone' },
-    { label: `${cityName} East Sector`, dLat: 0.02, dLon: 0.1, type: 'Residential Corridor' },
-    { label: `${cityName} West Sector`, dLat: -0.02, dLon: -0.1, type: 'Valley Plain' },
+    { label: `${cityName} Center`, dLat: 0, dLon: 0, type: 'CAMS model grid cell' },
+    { label: `${cityName} North Grid`, dLat: 0.1, dLon: 0.02, type: 'CAMS model grid cell' },
+    { label: `${cityName} South Grid`, dLat: -0.1, dLon: -0.02, type: 'CAMS model grid cell' },
+    { label: `${cityName} East Grid`, dLat: 0.02, dLon: 0.1, type: 'CAMS model grid cell' },
+    { label: `${cityName} West Grid`, dLat: -0.02, dLon: -0.1, type: 'CAMS model grid cell' },
   ];
 
   const results = await Promise.all(
     offsets.map(async (item, idx) => {
       const lat = centerLat + item.dLat;
       const lon = centerLon + item.dLon;
-      try {
-        const url = `${AIR_QUALITY_BASE_URL}?latitude=${lat}&longitude=${lon}&current=european_aqi,us_aqi,pm10,pm2_5,nitrogen_dioxide&timezone=auto`;
-        const res = await fetch(url);
-        if (!res.ok) return null;
-        const data = await res.json();
-        const current = data.current || {};
-        return {
-          id: `grid-${idx}`,
-          name: item.label,
-          latitude: lat,
-          longitude: lon,
-          europeanAqi: current.european_aqi != null ? Number(current.european_aqi) : null,
-          usAqi: current.us_aqi != null ? Number(current.us_aqi) : null,
-          pm25: current.pm2_5 != null ? Number(current.pm2_5) : null,
-          pm10: current.pm10 != null ? Number(current.pm10) : null,
-          no2: current.nitrogen_dioxide != null ? Number(current.nitrogen_dioxide) : null,
-          timestamp: current.time || new Date().toISOString(),
-          type: item.type,
-        };
-      } catch {
-        return null;
+      const url = `${AIR_QUALITY_BASE_URL}?latitude=${lat}&longitude=${lon}&current=european_aqi,us_aqi,pm10,pm2_5,nitrogen_dioxide&timezone=GMT&timeformat=iso8601`;
+      const res = await fetch(url);
+      if (res.status === 429) {
+        throw new Error('Open-Meteo rate limit reached while loading map grid points.');
       }
+      if (!res.ok) {
+        throw new Error(`Open-Meteo map request failed with HTTP ${res.status}.`);
+      }
+      const data = await res.json();
+      const current = data.current || {};
+      if (!current.time) return null;
+      return {
+        id: `grid-${idx}`,
+        name: item.label,
+        latitude: lat,
+        longitude: lon,
+        europeanAqi: current.european_aqi != null ? Number(current.european_aqi) : null,
+        usAqi: current.us_aqi != null ? Number(current.us_aqi) : null,
+        pm25: current.pm2_5 != null ? Number(current.pm2_5) : null,
+        pm10: current.pm10 != null ? Number(current.pm10) : null,
+        indAqi: calculateIndAqi(
+          current.pm2_5 != null ? Number(current.pm2_5) : null,
+          current.pm10 != null ? Number(current.pm10) : null
+        ),
+        no2: current.nitrogen_dioxide != null ? Number(current.nitrogen_dioxide) : null,
+        timestamp: normalizeUtcTimestamp(current.time),
+        type: item.type,
+      };
     })
   );
 
-  return results.filter(Boolean) as any[];
+  return results.filter((point): point is NonNullable<typeof point> => point !== null);
 }
 
 export function clearAirQualityCache(): void {

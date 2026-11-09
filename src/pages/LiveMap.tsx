@@ -3,7 +3,7 @@ import { LocationInfo, AQIScale } from '../types/airQuality';
 import { MapView } from '../components/MapView';
 import { Globe3D } from '../components/Globe3D';
 import { FEATURED_CITIES } from '../services/geocodingApi';
-import { GLOBAL_CITIES_AQI, GlobalCityAQI } from '../data/globalCitiesAqi';
+import { GLOBAL_CITIES } from '../data/globalCities';
 import { soundFx } from '../utils/audioFx';
 import {
   MapPin,
@@ -24,6 +24,7 @@ interface LiveMapProps {
   currentAqi: number | null;
   currentPm25: number | null;
   currentPm10: number | null;
+  currentTimestamp: string | null;
   scale: AQIScale;
   onSelectLocation: (loc: LocationInfo) => void;
 }
@@ -64,6 +65,7 @@ export function LiveMap({
   currentAqi,
   currentPm25,
   currentPm10,
+  currentTimestamp,
   scale,
   onSelectLocation,
 }: LiveMapProps) {
@@ -73,7 +75,7 @@ export function LiveMap({
 
   // Filtered global observation hubs
   const displayedHubs = useMemo(() => {
-    return GLOBAL_CITIES_AQI.filter((c) => {
+    return GLOBAL_CITIES.filter((c) => {
       const matchSearch =
         c.name.toLowerCase().includes(hubSearch.toLowerCase()) ||
         c.country.toLowerCase().includes(hubSearch.toLowerCase());
@@ -96,7 +98,7 @@ export function LiveMap({
           </h2>
           <p className="text-xs text-[#94A3B8]">
             {viewMode === '3D'
-              ? 'Authentic NASA Blue Marble satellite terrain with political borders, geographic ocean & continental labels, and real-time AQI across all places.'
+              ? 'Satellite terrain and city locations. Select a city to fetch its current CAMS model estimate.'
               : 'Sub-grid coordinate mapping with detailed ground telemetry popups and spatial legends.'}
           </p>
         </div>
@@ -160,6 +162,7 @@ export function LiveMap({
       {/* Main Visualization View: 3D Realistic Satellite Globe or 2D Leaflet Map */}
       {viewMode === '3D' ? (
         <Globe3D
+          key={`${currentLocation.latitude}:${currentLocation.longitude}:${currentAqi ?? 'unavailable'}`}
           selectedLocation={currentLocation}
           onSelectLocation={onSelectLocation}
           currentAqi={currentAqi}
@@ -172,6 +175,7 @@ export function LiveMap({
           currentAqi={currentAqi}
           currentPm25={currentPm25}
           currentPm10={currentPm10}
+          currentTimestamp={currentTimestamp}
           scale={scale}
           onSelectLocation={onSelectLocation}
         />

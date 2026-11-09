@@ -357,9 +357,12 @@ export function Overview({
 
             <div className="text-[11px] text-[#64748B] font-mono">
               <span className="block text-[#94A3B8]">Last Updated</span>
-              <span>
-                {formatDateTime(airData.timestamp)} (Open-Meteo)
-              </span>
+              <span className="block">{airData.dataSource}</span>
+              <span>{formatDateTime(airData.timestamp)}</span>
+              <span className="block text-amber-400">CAMS model estimate, not a ground-station measurement.</span>
+              {scale === 'INDAQI' && (
+                <span className="block text-amber-400">Indian AQI uses PM2.5/PM10 only; it is not the official CPCB overall AQI.</span>
+              )}
             </div>
           </div>
         </div>
@@ -577,7 +580,7 @@ export function Overview({
             </div>
 
             <p className="text-[11px] text-[#64748B] mb-3">
-              Explore global air quality hotspots in real-time
+              Select a city to fetch its current CAMS model estimate
             </p>
 
             {/* REAL MAP CONTAINER: Renders Leaflet MiniMap in 2D or Globe3D in 3D */}
@@ -591,6 +594,7 @@ export function Overview({
                 />
               ) : (
                 <Globe3D
+                  key={`${airData.location.latitude}:${airData.location.longitude}:${aqiVal ?? 'unavailable'}`}
                   selectedLocation={airData.location}
                   onSelectLocation={onSelectLocation || (() => {})}
                   currentAqi={aqiVal}
@@ -604,13 +608,7 @@ export function Overview({
 
           {/* Bottom Legend & View Full Map Button */}
           <div className="flex items-center justify-between pt-3 mt-2 border-t border-[#162338] text-[10px] text-[#64748B] font-mono">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="flex items-center gap-1 text-emerald-400">● Good</span>
-              <span className="flex items-center gap-1 text-amber-400">● Moderate</span>
-              <span className="flex items-center gap-1 text-orange-400">● Poor</span>
-              <span className="flex items-center gap-1 text-rose-400">● Very Poor</span>
-              <span className="flex items-center gap-1 text-rose-600">● Severe</span>
-            </div>
+            <span>Global pins are locations, not live readings</span>
 
             <button
               onClick={() => {
@@ -674,7 +672,11 @@ export function Overview({
             </div>
 
             {/* Recharts Multi-Line Curve */}
-            <div className="w-full h-48 mt-1">
+            {trendData.length === 0 ? (
+              <p className="w-full h-48 flex items-center justify-center text-xs text-[#94A3B8]">
+                Historical model data is unavailable for this period.
+              </p>
+            ) : <div className="w-full h-48 mt-1">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={trendData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
                   <XAxis
@@ -724,7 +726,7 @@ export function Overview({
                   />
                 </LineChart>
               </ResponsiveContainer>
-            </div>
+            </div>}
           </div>
         </div>
 
@@ -757,9 +759,12 @@ export function Overview({
                 <Leaf className="w-4 h-4 fill-emerald-400/20" />
               </div>
               <p className="text-xs text-[#94A3B8] leading-relaxed">
-                Air quality is <strong className="text-emerald-400 font-bold">{category.category.toLowerCase()}</strong> in{' '}
-                {airData.location.name} with AQI {aqiVal ?? 42}. PM2.5 levels are {p.pm2_5 !== null && p.pm2_5 > 35 ? 'elevated' : 'within safe limits'}.
-                Enjoy outdoor activities!
+                Air quality is <strong className="font-bold" style={{ color: category.color }}>{category.category.toLowerCase()}</strong> in{' '}
+                {airData.location.name} ({aqiVal ?? 'AQI unavailable'}).{' '}
+                {p.pm2_5 !== null
+                  ? `PM2.5 model estimate: ${p.pm2_5} µg/m³.`
+                  : 'PM2.5 measurement is unavailable.'}{' '}
+                {category.outdoorAdvice}
               </p>
             </div>
 

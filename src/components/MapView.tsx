@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import { LocationInfo, AQIScale } from '../types/airQuality';
 import { fetchGridPoints } from '../services/airQualityApi';
-import { getCategoryForScale } from '../utils/aqiCalculations';
+import { calculateIndAqi, getCategoryForScale } from '../utils/aqiCalculations';
 import { formatDateTime } from '../utils/dateUtils';
 import { Layers, MapPin, RefreshCw, AlertCircle, Info, Globe2 } from 'lucide-react';
 
@@ -11,6 +11,7 @@ interface MapViewProps {
   currentAqi: number | null;
   currentPm25: number | null;
   currentPm10: number | null;
+  currentTimestamp: string | null;
   scale: AQIScale;
   onSelectLocation?: (loc: LocationInfo) => void;
 }
@@ -22,10 +23,11 @@ interface MapPoint {
   longitude: number;
   europeanAqi: number | null;
   usAqi: number | null;
+  indAqi: number | null;
   pm25: number | null;
   pm10: number | null;
   no2: number | null;
-  timestamp: string;
+  timestamp: string | null;
   type: string;
 }
 
@@ -34,6 +36,7 @@ export function MapView({
   currentAqi,
   currentPm25,
   currentPm10,
+  currentTimestamp,
   scale,
   onSelectLocation,
 }: MapViewProps) {
@@ -46,6 +49,7 @@ export function MapView({
   const [mapStyle, setMapStyle] = useState<'satellite' | 'dark' | 'street'>('satellite');
   const [gridPoints, setGridPoints] = useState<MapPoint[]>([]);
   const [loadingPoints, setLoadingPoints] = useState(false);
+  const [gridError, setGridError] = useState<string | null>(null);
   const [selectedPoint, setSelectedPoint] = useState<MapPoint | null>(null);
 
   // Fetch verified real grid points around city
@@ -53,6 +57,7 @@ export function MapView({
     let isMounted = true;
     async function loadPoints() {
       setLoadingPoints(true);
+      setGridError(null);
       try {
         const points = await fetchGridPoints(
           currentLocation.latitude,
@@ -61,9 +66,16 @@ export function MapView({
         );
         if (isMounted) {
           setGridPoints(points);
+          if (points.length === 0) {
+            setGridError('No valid CAMS model readings were returned for nearby grid cells.');
+          }
         }
       } catch (e) {
         console.error(e);
+        if (isMounted) {
+          setGridError(e instanceof Error ? e.message : 'Failed to load nearby model data.');
+          setGridPoints([]);
+        }
       } finally {
         if (isMounted) setLoadingPoints(false);
       }
@@ -175,10 +187,11 @@ export function MapView({
         longitude: currentLocation.longitude,
         europeanAqi: scale === 'EAQI' ? currentAqi : null,
         usAqi: scale === 'USAQI' ? currentAqi : null,
+        indAqi: scale === 'INDAQI' ? currentAqi : null,
         pm25: currentPm25,
         pm10: currentPm10,
         no2: null,
-        timestamp: new Date().toISOString(),
+        timestamp: currentTimestamp,
         type: 'Selected Location',
       },
       ...gridPoints.filter(
@@ -189,7 +202,11 @@ export function MapView({
     ];
 
     allPoints.forEach((pt) => {
-      const aqiVal = scale === 'EAQI' ? pt.europeanAqi : pt.usAqi;
+      const aqiVal = scale === 'EAQI'
+        ? pt.europeanAqi
+        : scale === 'USAQI'
+        ? pt.usAqi
+        : pt.indAqi ?? calculateIndAqi(pt.pm25, pt.pm10);
       const cat = getCategoryForScale(aqiVal, scale);
 
       // Create modern pulsing custom HTML DivIcon
@@ -244,7 +261,7 @@ export function MapView({
             <strong style="color: #F8FAFC;">${pt.pm10 != null ? `${pt.pm10} µg/m³` : 'N/A'}</strong>
           </div>
           <div style="font-size: 9px; color: #64748B; margin-top: 6px; border-top: 1px solid #1F3045; padding-top: 4px;">
-            Timestamp: ${formatDateTime(pt.timestamp)}
+            Timestamp: ${pt.timestamp ? formatDateTime(pt.timestamp) : 'Unavailable'}
           </div>
         </div>
       `;
@@ -259,7 +276,7 @@ export function MapView({
 
       marker.addTo(layer);
     });
-  }, [gridPoints, currentLocation, currentAqi, currentPm25, currentPm10, scale]);
+  }, [gridPoints, currentLocation, currentAqi, currentPm25, currentPm10, currentTimestamp, scale]);
 
   return (
     <div className="space-y-6">
@@ -279,7 +296,7 @@ export function MapView({
                 </span>
               </h3>
               <p className="text-xs text-[#94A3B8]">
-                Interactive spatial mapping of real-time air pollution data points
+                Interactive spatial mapping of Open-Meteo CAMS model estimates (not ground-station measurements)
               </p>
             </div>
           </div>
@@ -329,6 +346,12 @@ export function MapView({
           </div>
         </div>
 
+        {gridError && (
+          <div className="px-4 py-2 text-xs text-amber-300 bg-amber-500/10 border-b border-amber-500/20">
+            {gridError}
+          </div>
+        )}
+
         {/* Map Canvas */}
         <div className="relative w-full h-[520px]">
           <div ref={mapContainerRef} className="w-full h-full z-0" />
@@ -337,7 +360,7 @@ export function MapView({
           <div className="absolute bottom-5 left-5 z-20 bg-[#0D1422]/95 border border-[#1F3045] rounded-xl p-3 shadow-2xl backdrop-blur-md max-w-xs text-xs">
             <div className="font-bold text-[#F8FAFC] mb-2 flex items-center justify-between">
               <span>{scale} Categories</span>
-              <span className="text-[10px] text-[#94A3B8] font-normal">Real Data</span>
+              <span className="text-[10px] text-[#94A3B8] font-normal">Model data</span>
             </div>
             <div className="space-y-1.5">
               <div className="flex items-center gap-2">
@@ -347,28 +370,28 @@ export function MapView({
               </div>
               <div className="flex items-center gap-2">
                 <span className="w-3 h-3 rounded-full bg-[#84CC16] shrink-0" />
-                <span className="text-[#94A3B8]">{scale === 'EAQI' ? 'Fair' : 'Moderate'}</span>
-                <span className="ml-auto font-mono text-[#F8FAFC]">{scale === 'EAQI' ? '20 - 40' : '51 - 100'}</span>
+                <span className="text-[#94A3B8]">{scale === 'INDAQI' ? 'Satisfactory' : scale === 'EAQI' ? 'Fair' : 'Moderate'}</span>
+                <span className="ml-auto font-mono text-[#F8FAFC]">{scale === 'INDAQI' ? '51 - 100' : scale === 'EAQI' ? '20 - 40' : '51 - 100'}</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="w-3 h-3 rounded-full bg-[#EAB308] shrink-0" />
-                <span className="text-[#94A3B8]">{scale === 'EAQI' ? 'Moderate' : 'Sensitive'}</span>
-                <span className="ml-auto font-mono text-[#F8FAFC]">{scale === 'EAQI' ? '40 - 60' : '101 - 150'}</span>
+                <span className="text-[#94A3B8]">{scale === 'INDAQI' ? 'Moderate' : scale === 'EAQI' ? 'Moderate' : 'Sensitive'}</span>
+                <span className="ml-auto font-mono text-[#F8FAFC]">{scale === 'INDAQI' ? '101 - 200' : scale === 'EAQI' ? '40 - 60' : '101 - 150'}</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="w-3 h-3 rounded-full bg-[#F97316] shrink-0" />
-                <span className="text-[#94A3B8]">{scale === 'EAQI' ? 'Poor' : 'Unhealthy'}</span>
-                <span className="ml-auto font-mono text-[#F8FAFC]">{scale === 'EAQI' ? '60 - 80' : '151 - 200'}</span>
+                <span className="text-[#94A3B8]">{scale === 'INDAQI' ? 'Poor' : scale === 'EAQI' ? 'Poor' : 'Unhealthy'}</span>
+                <span className="ml-auto font-mono text-[#F8FAFC]">{scale === 'INDAQI' ? '201 - 300' : scale === 'EAQI' ? '60 - 80' : '151 - 200'}</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="w-3 h-3 rounded-full bg-[#EF4444] shrink-0" />
-                <span className="text-[#94A3B8]">Very Poor / Unhealthy</span>
-                <span className="ml-auto font-mono text-[#F8FAFC]">{scale === 'EAQI' ? '80 - 100' : '201 - 300'}</span>
+                <span className="text-[#94A3B8]">{scale === 'INDAQI' ? 'Very Poor' : 'Very Poor / Unhealthy'}</span>
+                <span className="ml-auto font-mono text-[#F8FAFC]">{scale === 'INDAQI' ? '301 - 400' : scale === 'EAQI' ? '80 - 100' : '201 - 300'}</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="w-3 h-3 rounded-full bg-[#A855F7] shrink-0" />
-                <span className="text-[#94A3B8]">Hazardous</span>
-                <span className="ml-auto font-mono text-[#F8FAFC]">{scale === 'EAQI' ? '> 100' : '301+'}</span>
+                <span className="text-[#94A3B8]">{scale === 'INDAQI' ? 'Severe' : 'Hazardous'}</span>
+                <span className="ml-auto font-mono text-[#F8FAFC]">{scale === 'INDAQI' ? '401 - 500' : scale === 'EAQI' ? '> 100' : '301+'}</span>
               </div>
             </div>
           </div>
@@ -379,7 +402,7 @@ export function MapView({
           <div className="flex items-center gap-1.5">
             <Info className="w-3.5 h-3.5 text-[#38BDF8]" />
             <span>
-              All map coordinates represent actual fetched Open-Meteo European CAMS atmospheric model grid points. No mock stations or fabricated measurements.
+              Values come from Open-Meteo's CAMS atmospheric model grid, not ground monitoring stations. The India index is an approximate PM2.5/PM10-only calculation, not official CPCB AQI.
             </span>
           </div>
           <span className="font-mono text-[#94A3B8]/80 text-[11px]">
@@ -395,7 +418,11 @@ export function MapView({
         </h4>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {gridPoints.map((pt) => {
-            const aqiVal = scale === 'EAQI' ? pt.europeanAqi : pt.usAqi;
+            const aqiVal = scale === 'INDAQI'
+              ? pt.indAqi
+              : scale === 'EAQI'
+                ? pt.europeanAqi
+                : pt.usAqi;
             const cat = getCategoryForScale(aqiVal, scale);
             return (
               <div

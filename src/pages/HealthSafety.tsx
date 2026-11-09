@@ -336,8 +336,13 @@ export function HealthSafety({
                 Real-Time Activity Advisory ({currentData?.location.name || 'Current Location'})
               </h3>
               <p className="text-xs text-[#94A3B8]">
-                Tailored based on observed {scale} Index of <strong className="text-[#F8FAFC]">{currentAqi ?? 'N/A'}</strong> ({currentCat.category})
+                Based on the current {scale} model estimate of <strong className="text-[#F8FAFC]">{currentAqi ?? 'N/A'}</strong> ({currentCat.category})
               </p>
+              {selectedStandard === 'INDAQI' && (
+                <p className="text-xs text-amber-400 mt-1">
+                  PM2.5/PM10-only estimate; not the official CPCB overall AQI.
+                </p>
+              )}
             </div>
           </div>
 
@@ -348,7 +353,11 @@ export function HealthSafety({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
+        {currentAqi === null ? (
+          <p className="text-sm text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 mt-4">
+            Current AQI is unavailable, so location-specific activity recommendations cannot be generated. General health precautions below are not a substitute for local official advisories.
+          </p>
+        ) : <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
           {/* Outdoor Running */}
           <div className="bg-[#0D1422] border border-[#1F3045] rounded-xl p-4 flex flex-col justify-between">
             <div className="flex items-center justify-between mb-2">
@@ -442,7 +451,7 @@ export function HealthSafety({
               Ideal alternative during elevated outdoor pollution. Run a HEPA air purifier in the gym or exercise room.
             </p>
           </div>
-        </div>
+        </div>}
       </div>
 
       {/* Sensitive Populations Precautions */}

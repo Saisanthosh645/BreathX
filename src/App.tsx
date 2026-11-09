@@ -188,6 +188,7 @@ export default function App() {
                   }
                   currentPm25={airData?.pollutants.pm2_5 ?? null}
                   currentPm10={airData?.pollutants.pm10 ?? null}
+                  currentTimestamp={airData?.timestamp ?? null}
                   scale={activeScale}
                   onSelectLocation={(loc) => {
                     changeLocation(loc);

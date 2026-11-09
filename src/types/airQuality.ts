@@ -85,8 +85,8 @@ export interface DailyPollutionSummary {
   avgAqi: number;
   maxAqi: number;
   minAqi: number;
-  avgPm25: number;
-  avgPm10: number;
+  avgPm25: number | null;
+  avgPm10: number | null;
   dominantPollutant: string;
   category: AQICategory;
 }

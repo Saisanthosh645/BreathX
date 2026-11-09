@@ -12,6 +12,7 @@ import {
   aggregateDailySummaries,
   calculatePercentageChange,
 } from '../utils/pollutionAnalysis';
+import { calculateIndAqi } from '../utils/aqiCalculations';
 import { getNDaysAgoISO, getTodayISO, formatDate } from '../utils/dateUtils';
 import {
   ResponsiveContainer,
@@ -112,7 +113,11 @@ export function HistoricalAnalytics({
   const chartStep = rangeDays === 30 ? 6 : rangeDays === 14 ? 3 : 1;
   const chartPoints = points.filter((_, idx) => idx % chartStep === 0).map((pt) => ({
     time: pt.time.replace('T', ' ').slice(5, 16),
-    aqi: scale === 'EAQI' ? pt.europeanAqi : pt.usAqi,
+    aqi: scale === 'EAQI'
+      ? pt.europeanAqi
+      : scale === 'USAQI'
+      ? pt.usAqi
+      : calculateIndAqi(pt.pm2_5, pt.pm10),
     pm25: pt.pm2_5,
     pm10: pt.pm10,
     no2: pt.no2,
@@ -126,7 +131,7 @@ export function HistoricalAnalytics({
         <div>
           <div className="flex items-center gap-2 text-xs text-[#38BDF8] font-bold uppercase tracking-wider mb-1">
             <TrendingUp className="w-4 h-4" />
-            Verified Historical Telemetry
+            Historical CAMS Model Data
           </div>
           <h2 className="text-2xl font-extrabold text-[#F8FAFC]">
             Pollution Trends &amp; Analytics
@@ -225,7 +230,7 @@ export function HistoricalAnalytics({
             {/* Total Data Points */}
             <div className="bg-[#111C2D] border border-[#1F3045] rounded-2xl p-5 shadow-xl">
               <span className="text-xs uppercase tracking-wider text-[#94A3B8] font-semibold">
-                Validated Telemetry Points
+                Historical Model Data Points
               </span>
               <div className="text-2xl font-black font-mono text-[#F8FAFC] mt-2">
                 {points.length} Hourly Hours

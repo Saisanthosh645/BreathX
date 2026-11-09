@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import * as THREE from 'three';
 import { LocationInfo, AQIScale } from '../types/airQuality';
 import { soundFx } from '../utils/audioFx';
-import { GLOBAL_CITIES_AQI, GlobalCityAQI } from '../data/globalCitiesAqi';
+import { GLOBAL_CITIES, GlobalCity } from '../data/globalCities';
 import {
   RotateCcw,
   Play,
@@ -458,7 +458,7 @@ export function Globe3D({
   const [searchFilter, setSearchFilter] = useState('');
   const [continentFilter, setContinentFilter] = useState<string>('All');
   const [isAudioEnabled, setIsAudioEnabled] = useState(false);
-  const [hoveredCity, setHoveredCity] = useState<GlobalCityAQI | null>(null);
+  const [hoveredCity, setHoveredCity] = useState<GlobalCity | null>(null);
 
   // Three.js References
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -505,7 +505,7 @@ export function Globe3D({
 
   // Jump camera to a specific city
   const jumpToCity = useCallback(
-    (city: GlobalCityAQI | LocationInfo) => {
+    (city: GlobalCity | LocationInfo) => {
       soundFx.playCityLockChime();
       onSelectLocation(city);
       const phi = (90 - city.latitude) * (Math.PI / 180);
@@ -544,7 +544,7 @@ export function Globe3D({
 
   // The directory is geographic only; live AQI is loaded after selecting a city.
   const filteredCities = useMemo(() => {
-    return GLOBAL_CITIES_AQI.filter((c) => {
+    return GLOBAL_CITIES.filter((c) => {
       const matchSearch =
         c.name.toLowerCase().includes(searchFilter.toLowerCase()) ||
         c.country.toLowerCase().includes(searchFilter.toLowerCase());
@@ -707,7 +707,7 @@ export function Globe3D({
 
     const waveRingsList: THREE.Mesh[] = [];
 
-    GLOBAL_CITIES_AQI.forEach((city) => {
+    GLOBAL_CITIES.forEach((city) => {
       const isSelected = city.name === selectedLocation.name;
       const hasReading = isSelected && currentAqi !== null;
       const pinColor = new THREE.Color(hasReading ? '#22C55E' : '#38BDF8');
@@ -966,7 +966,7 @@ export function Globe3D({
             title="Open Global Directory of All Places AQI"
           >
             <Layers className="w-3.5 h-3.5" />
-            <span>All Places ({GLOBAL_CITIES_AQI.length})</span>
+            <span>All Places ({GLOBAL_CITIES.length})</span>
           </button>
 
           <button
@@ -1019,7 +1019,7 @@ export function Globe3D({
                   Global AQI Telemetry
                 </h4>
                 <p className="text-[11px] text-[#94A3B8]">
-                  All {GLOBAL_CITIES_AQI.length} planetary hubs
+                  All {GLOBAL_CITIES.length} planetary hubs
                 </p>
               </div>
             </div>

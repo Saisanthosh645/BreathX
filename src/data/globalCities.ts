@@ -1,13 +1,10 @@
 import { LocationInfo } from '../types/airQuality';
 
-export interface GlobalCityAQI extends LocationInfo {
+export interface GlobalCity extends LocationInfo {
   continent: 'Asia' | 'Europe' | 'North America' | 'South America' | 'Africa' | 'Oceania';
-  baseAqi: number;
-  dominant: 'PM2.5' | 'PM10' | 'O3' | 'NO2';
-  description: string;
 }
 
-export const GLOBAL_CITIES_AQI: GlobalCityAQI[] = [
+export const GLOBAL_CITIES: GlobalCity[] = [
   // --- ASIA ---
   {
     id: 1273294,
@@ -19,9 +16,6 @@ export const GLOBAL_CITIES_AQI: GlobalCityAQI[] = [
     longitude: 77.209,
     timezone: 'Asia/Kolkata',
     continent: 'Asia',
-    baseAqi: 245,
-    dominant: 'PM2.5',
-    description: 'Post-monsoon seasonal biomass haze and urban emissions.',
   },
   {
     id: 1269843,
@@ -33,9 +27,6 @@ export const GLOBAL_CITIES_AQI: GlobalCityAQI[] = [
     longitude: 78.4867,
     timezone: 'Asia/Kolkata',
     continent: 'Asia',
-    baseAqi: 105,
-    dominant: 'PM2.5',
-    description: 'Deccan plateau urban transport and regional industrial activity.',
   },
   {
     id: 1275339,
@@ -47,9 +38,6 @@ export const GLOBAL_CITIES_AQI: GlobalCityAQI[] = [
     longitude: 72.8777,
     timezone: 'Asia/Kolkata',
     continent: 'Asia',
-    baseAqi: 135,
-    dominant: 'PM2.5',
-    description: 'Coastal sea breeze dispersion moderated by heavy vehicular density.',
   },
   {
     id: 1275004,
@@ -61,9 +49,6 @@ export const GLOBAL_CITIES_AQI: GlobalCityAQI[] = [
     longitude: 88.3639,
     timezone: 'Asia/Kolkata',
     continent: 'Asia',
-    baseAqi: 175,
-    dominant: 'PM2.5',
-    description: 'Lower Gangetic delta particulate buildup and river basin trapping.',
   },
   {
     id: 1816670,
@@ -75,9 +60,6 @@ export const GLOBAL_CITIES_AQI: GlobalCityAQI[] = [
     longitude: 116.4074,
     timezone: 'Asia/Shanghai',
     continent: 'Asia',
-    baseAqi: 168,
-    dominant: 'PM2.5',
-    description: 'Northern China plain industrial basin surrounded by Yanshan mountains.',
   },
   {
     id: 1796236,
@@ -89,9 +71,6 @@ export const GLOBAL_CITIES_AQI: GlobalCityAQI[] = [
     longitude: 121.4737,
     timezone: 'Asia/Shanghai',
     continent: 'Asia',
-    baseAqi: 115,
-    dominant: 'PM2.5',
-    description: 'Yangtze River Delta manufacturing corridor with maritime influence.',
   },
   {
     id: 1850147,
@@ -103,9 +82,6 @@ export const GLOBAL_CITIES_AQI: GlobalCityAQI[] = [
     longitude: 139.6917,
     timezone: 'Asia/Tokyo',
     continent: 'Asia',
-    baseAqi: 42,
-    dominant: 'O3',
-    description: 'High public transit adoption and strict vehicle emissions standards.',
   },
   {
     id: 1835848,
@@ -117,9 +93,6 @@ export const GLOBAL_CITIES_AQI: GlobalCityAQI[] = [
     longitude: 126.978,
     timezone: 'Asia/Seoul',
     continent: 'Asia',
-    baseAqi: 68,
-    dominant: 'PM2.5',
-    description: 'Transboundary yellow dust streams from Gobi combined with domestic heating.',
   },
   {
     id: 1609350,
@@ -131,9 +104,6 @@ export const GLOBAL_CITIES_AQI: GlobalCityAQI[] = [
     longitude: 100.5018,
     timezone: 'Asia/Bangkok',
     continent: 'Asia',
-    baseAqi: 128,
-    dominant: 'PM2.5',
-    description: 'Chao Phraya basin atmospheric temperature inversions and diesel traffic.',
   },
   {
     id: 1880252,
@@ -145,9 +115,6 @@ export const GLOBAL_CITIES_AQI: GlobalCityAQI[] = [
     longitude: 103.8501,
     timezone: 'Asia/Singapore',
     continent: 'Asia',
-    baseAqi: 48,
-    dominant: 'O3',
-    description: 'Equatorial maritime winds and stringent industrial air standards.',
   },
   {
     id: 1642911,
@@ -159,9 +126,6 @@ export const GLOBAL_CITIES_AQI: GlobalCityAQI[] = [
     longitude: 106.8456,
     timezone: 'Asia/Jakarta',
     continent: 'Asia',
-    baseAqi: 152,
-    dominant: 'PM2.5',
-    description: 'Dense metropolitan motorbike emissions and thermal trapping in Java valley.',
   },
   {
     id: 292223,
@@ -173,9 +137,6 @@ export const GLOBAL_CITIES_AQI: GlobalCityAQI[] = [
     longitude: 55.2708,
     timezone: 'Asia/Dubai',
     continent: 'Asia',
-    baseAqi: 138,
-    dominant: 'PM10',
-    description: 'Coarse mineral desert dust particles and coastal humidity mixing.',
   },
   {
     id: 108410,
@@ -187,9 +148,6 @@ export const GLOBAL_CITIES_AQI: GlobalCityAQI[] = [
     longitude: 46.6753,
     timezone: 'Asia/Riyadh',
     continent: 'Asia',
-    baseAqi: 148,
-    dominant: 'PM10',
-    description: 'Najd plateau arid dust storms and refinery dispersion.',
   },
 
   // --- NORTH AMERICA ---
@@ -203,9 +161,6 @@ export const GLOBAL_CITIES_AQI: GlobalCityAQI[] = [
     longitude: -74.006,
     timezone: 'America/New_York',
     continent: 'North America',
-    baseAqi: 48,
-    dominant: 'PM2.5',
-    description: 'Atlantic coastal circulation and dense northeastern urban grid.',
   },
   {
     id: 5368361,
@@ -217,9 +172,6 @@ export const GLOBAL_CITIES_AQI: GlobalCityAQI[] = [
     longitude: -118.2437,
     timezone: 'America/Los_Angeles',
     continent: 'North America',
-    baseAqi: 82,
-    dominant: 'O3',
-    description: 'Mountain ring inversion layer trapping photochemical smog.',
   },
   {
     id: 4887398,
@@ -231,9 +183,6 @@ export const GLOBAL_CITIES_AQI: GlobalCityAQI[] = [
     longitude: -87.6298,
     timezone: 'America/Chicago',
     continent: 'North America',
-    baseAqi: 52,
-    dominant: 'PM2.5',
-    description: 'Lake Michigan wind ventilation across midwestern flat terrain.',
   },
   {
     id: 6167865,
@@ -245,9 +194,6 @@ export const GLOBAL_CITIES_AQI: GlobalCityAQI[] = [
     longitude: -79.3832,
     timezone: 'America/Toronto',
     continent: 'North America',
-    baseAqi: 36,
-    dominant: 'PM2.5',
-    description: 'Lake Ontario microclimate with clean northern polar ventilation.',
   },
   {
     id: 6173331,
@@ -259,9 +205,6 @@ export const GLOBAL_CITIES_AQI: GlobalCityAQI[] = [
     longitude: -123.1207,
     timezone: 'America/Vancouver',
     continent: 'North America',
-    baseAqi: 24,
-    dominant: 'PM2.5',
-    description: 'Pacific maritime rainwash providing pristine baseline air purity.',
   },
   {
     id: 3530597,
@@ -273,9 +216,6 @@ export const GLOBAL_CITIES_AQI: GlobalCityAQI[] = [
     longitude: -99.1332,
     timezone: 'America/Mexico_City',
     continent: 'North America',
-    baseAqi: 122,
-    dominant: 'O3',
-    description: 'High-altitude valley (2,240m) ringed by volcanic mountains trapping emissions.',
   },
   {
     id: 4699066,
@@ -287,9 +227,6 @@ export const GLOBAL_CITIES_AQI: GlobalCityAQI[] = [
     longitude: -95.3698,
     timezone: 'America/Chicago',
     continent: 'North America',
-    baseAqi: 64,
-    dominant: 'O3',
-    description: 'Gulf Coast petrochemical industrial complex and warm sunlight ozone creation.',
   },
 
   // --- SOUTH AMERICA ---
@@ -303,9 +240,6 @@ export const GLOBAL_CITIES_AQI: GlobalCityAQI[] = [
     longitude: -46.6333,
     timezone: 'America/Sao_Paulo',
     continent: 'South America',
-    baseAqi: 76,
-    dominant: 'PM2.5',
-    description: 'Plateau topography with millions of ethanol/diesel vehicles.',
   },
   {
     id: 3435910,
@@ -317,9 +251,6 @@ export const GLOBAL_CITIES_AQI: GlobalCityAQI[] = [
     longitude: -58.3816,
     timezone: 'America/Argentina/Buenos_Aires',
     continent: 'South America',
-    baseAqi: 44,
-    dominant: 'PM2.5',
-    description: 'Flat Pampas winds and Rio de la Plata oceanic breezes maintaining clean air.',
   },
   {
     id: 3871336,
@@ -331,9 +262,6 @@ export const GLOBAL_CITIES_AQI: GlobalCityAQI[] = [
     longitude: -70.6693,
     timezone: 'America/Santiago',
     continent: 'South America',
-    baseAqi: 118,
-    dominant: 'PM2.5',
-    description: 'Andes mountain wall causing severe winter temperature inversions.',
   },
   {
     id: 3688689,
@@ -345,9 +273,6 @@ export const GLOBAL_CITIES_AQI: GlobalCityAQI[] = [
     longitude: -74.0721,
     timezone: 'America/Bogota',
     continent: 'South America',
-    baseAqi: 68,
-    dominant: 'PM2.5',
-    description: 'Andean high savanna plateau with diesel transit emissions.',
   },
   {
     id: 3936456,
@@ -359,9 +284,6 @@ export const GLOBAL_CITIES_AQI: GlobalCityAQI[] = [
     longitude: -77.0428,
     timezone: 'America/Lima',
     continent: 'South America',
-    baseAqi: 112,
-    dominant: 'PM2.5',
-    description: 'Humboldt current coastal fog cap trapping dust and vehicle exhaust.',
   },
 
   // --- EUROPE ---
@@ -375,9 +297,6 @@ export const GLOBAL_CITIES_AQI: GlobalCityAQI[] = [
     longitude: -0.1257,
     timezone: 'Europe/London',
     continent: 'Europe',
-    baseAqi: 36,
-    dominant: 'NO2',
-    description: 'Ultra-low emission zone (ULEZ) enforcement and North Atlantic westerlies.',
   },
   {
     id: 2988507,
@@ -389,9 +308,6 @@ export const GLOBAL_CITIES_AQI: GlobalCityAQI[] = [
     longitude: 2.3488,
     timezone: 'Europe/Paris',
     continent: 'Europe',
-    baseAqi: 42,
-    dominant: 'NO2',
-    description: 'Ring road transit emissions ventilated by Atlantic low-pressure fronts.',
   },
   {
     id: 2950159,
@@ -403,9 +319,6 @@ export const GLOBAL_CITIES_AQI: GlobalCityAQI[] = [
     longitude: 13.405,
     timezone: 'Europe/Berlin',
     continent: 'Europe',
-    baseAqi: 38,
-    dominant: 'PM2.5',
-    description: 'Central European plain with extensive urban green canopies and EV transit.',
   },
   {
     id: 3169070,
@@ -417,9 +330,6 @@ export const GLOBAL_CITIES_AQI: GlobalCityAQI[] = [
     longitude: 12.5113,
     timezone: 'Europe/Rome',
     continent: 'Europe',
-    baseAqi: 58,
-    dominant: 'NO2',
-    description: 'Mediterranean thermal sunshine and historical city vehicular bottlenecks.',
   },
   {
     id: 3173435,
@@ -431,9 +341,6 @@ export const GLOBAL_CITIES_AQI: GlobalCityAQI[] = [
     longitude: 9.19,
     timezone: 'Europe/Rome',
     continent: 'Europe',
-    baseAqi: 126,
-    dominant: 'PM2.5',
-    description: 'Po Valley geographic basin shielded by Alps preventing wind dispersion.',
   },
   {
     id: 756135,
@@ -445,9 +352,6 @@ export const GLOBAL_CITIES_AQI: GlobalCityAQI[] = [
     longitude: 21.0122,
     timezone: 'Europe/Warsaw',
     continent: 'Europe',
-    baseAqi: 92,
-    dominant: 'PM2.5',
-    description: 'Winter domestic solid fuel heating and industrial corridor drift.',
   },
   {
     id: 3117735,
@@ -459,9 +363,6 @@ export const GLOBAL_CITIES_AQI: GlobalCityAQI[] = [
     longitude: -3.7038,
     timezone: 'Europe/Madrid',
     continent: 'Europe',
-    baseAqi: 46,
-    dominant: 'O3',
-    description: 'High Meseta plateau sunshine creating warm-season ozone layers.',
   },
 
   // --- AFRICA ---
@@ -475,9 +376,6 @@ export const GLOBAL_CITIES_AQI: GlobalCityAQI[] = [
     longitude: 31.2357,
     timezone: 'Africa/Cairo',
     continent: 'Africa',
-    baseAqi: 165,
-    dominant: 'PM10',
-    description: 'Mokattam hills thermal inversion trapping Nile valley desert dust and traffic.',
   },
   {
     id: 2332459,
@@ -489,9 +387,6 @@ export const GLOBAL_CITIES_AQI: GlobalCityAQI[] = [
     longitude: 3.3792,
     timezone: 'Africa/Lagos',
     continent: 'Africa',
-    baseAqi: 142,
-    dominant: 'PM2.5',
-    description: 'High-density commercial transport and seasonal Harmattan Saharan dust.',
   },
   {
     id: 184745,
@@ -503,9 +398,6 @@ export const GLOBAL_CITIES_AQI: GlobalCityAQI[] = [
     longitude: 36.8219,
     timezone: 'Africa/Nairobi',
     continent: 'Africa',
-    baseAqi: 62,
-    dominant: 'PM2.5',
-    description: 'Highland altitude (1,795m) with brisk East African rift winds.',
   },
   {
     id: 993800,
@@ -517,9 +409,6 @@ export const GLOBAL_CITIES_AQI: GlobalCityAQI[] = [
     longitude: 28.0473,
     timezone: 'Africa/Johannesburg',
     continent: 'Africa',
-    baseAqi: 74,
-    dominant: 'PM2.5',
-    description: 'Highveld plateau mining dust combined with winter residential coal heating.',
   },
 
   // --- OCEANIA ---
@@ -533,9 +422,6 @@ export const GLOBAL_CITIES_AQI: GlobalCityAQI[] = [
     longitude: 151.2093,
     timezone: 'Australia/Sydney',
     continent: 'Oceania',
-    baseAqi: 28,
-    dominant: 'O3',
-    description: 'Tasman Sea oceanic westerlies maintaining exceptionally clean air.',
   },
   {
     id: 2158177,
@@ -547,9 +433,6 @@ export const GLOBAL_CITIES_AQI: GlobalCityAQI[] = [
     longitude: 144.9631,
     timezone: 'Australia/Melbourne',
     continent: 'Oceania',
-    baseAqi: 26,
-    dominant: 'PM2.5',
-    description: 'Southern ocean polar winds providing low aerosol concentration.',
   },
   {
     id: 2193733,
@@ -561,8 +444,5 @@ export const GLOBAL_CITIES_AQI: GlobalCityAQI[] = [
     longitude: 174.7633,
     timezone: 'Pacific/Auckland',
     continent: 'Oceania',
-    baseAqi: 18,
-    dominant: 'PM2.5',
-    description: 'Roaring Forties oceanic winds ensuring pristine baseline air quality.',
   },
 ];

@@ -51,6 +51,9 @@ export function useAirQuality() {
       setRefreshing(true);
     } else {
       setLoading(true);
+      setAirData(null);
+      setHourlyData([]);
+      setLastFetched(null);
     }
     setError(null);
 

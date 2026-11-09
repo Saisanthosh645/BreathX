@@ -1,11 +1,15 @@
 import { useState, useEffect } from 'react';
-import { LocationInfo, AQIScale, CurrentAirQualityData } from '../types/airQuality';
+import { LocationInfo, AQIScale, CurrentAirQualityData, HourlyAirQualityPoint } from '../types/airQuality';
 import { FEATURED_CITIES, searchCities } from '../services/geocodingApi';
-import { fetchLiveAirQuality } from '../services/airQualityApi';
+import { fetchHistoricalAirQuality, fetchLiveAirQuality } from '../services/airQualityApi';
+import { aggregateDailySummaries } from '../utils/pollutionAnalysis';
+import { getNDaysAgoISO, getTodayISO } from '../utils/dateUtils';
 import { getCategoryForScale } from '../utils/aqiCalculations';
 import { formatDateTime } from '../utils/dateUtils';
 import {
   ResponsiveContainer,
+  LineChart,
+  Line,
   BarChart,
   Bar,
   XAxis,
@@ -38,6 +42,10 @@ interface CityComparisonItem {
   error?: string;
 }
 
+function getLocationKey(location: LocationInfo): string {
+  return `${location.latitude.toFixed(3)},${location.longitude.toFixed(3)}`;
+}
+
 export function CompareCities({ initialCity, scale }: CompareCitiesProps) {
   const [comparedCities, setComparedCities] = useState<CityComparisonItem[]>([
     { location: initialCity, data: null, loading: true },
@@ -48,6 +56,9 @@ export function CompareCities({ initialCity, scale }: CompareCitiesProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<LocationInfo[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [historyByCity, setHistoryByCity] = useState<Record<string, HourlyAirQualityPoint[]>>({});
+  const [historyErrors, setHistoryErrors] = useState<Record<string, string>>({});
+  const comparedCityKeys = comparedCities.map((city) => getLocationKey(city.location)).join('|');
 
   // Load telemetry for any city missing data
   useEffect(() => {
@@ -72,6 +83,57 @@ export function CompareCities({ initialCity, scale }: CompareCitiesProps) {
       }
     });
   }, [comparedCities]);
+
+  useEffect(() => {
+    let active = true;
+    const missingHistory = comparedCities.filter((city) => {
+      const key = getLocationKey(city.location);
+      return historyByCity[key] === undefined && historyErrors[key] === undefined;
+    });
+
+    const loadMissingHistory = async () => {
+      const results = await Promise.all(missingHistory.map(async (city) => {
+        const key = getLocationKey(city.location);
+        try {
+          const points = await fetchHistoricalAirQuality(
+            city.location.latitude,
+            city.location.longitude,
+            getNDaysAgoISO(7),
+            getTodayISO()
+          );
+          return { key, points, error: null };
+        } catch (error) {
+          return {
+            key,
+            points: null,
+            error: error instanceof Error ? error.message : 'Failed to load historical model data.',
+          };
+        }
+      }));
+
+      if (!active) return;
+      setHistoryByCity((previous) => {
+        const next = { ...previous };
+        results.forEach(({ key, points }) => {
+          if (points !== null) next[key] = points;
+        });
+        return next;
+      });
+      setHistoryErrors((previous) => {
+        const next = { ...previous };
+        results.forEach(({ key, error }) => {
+          if (error !== null) next[key] = error;
+        });
+        return next;
+      });
+    };
+
+    if (missingHistory.length > 0) void loadMissingHistory();
+
+    return () => {
+      active = false;
+    };
+  }, [comparedCityKeys, historyByCity, historyErrors]);
 
   // Search autocomplete
   useEffect(() => {
@@ -155,12 +217,36 @@ export function CompareCities({ initialCity, scale }: CompareCitiesProps) {
           : c.data!.indAqi;
       return {
         name: c.location.name,
-        aqi: aqi ?? 0,
-        pm25: c.data!.pollutants.pm2_5 ?? 0,
-        pm10: c.data!.pollutants.pm10 ?? 0,
-        no2: c.data!.pollutants.no2 ?? 0,
+        aqi,
+        pm25: c.data!.pollutants.pm2_5,
+        pm10: c.data!.pollutants.pm10,
+        no2: c.data!.pollutants.no2,
       };
     });
+
+  const dailyHistory = comparedCities.map((city) => ({
+    city,
+    summaries: aggregateDailySummaries(
+      historyByCity[getLocationKey(city.location)] ?? [],
+      scale
+    ),
+  }));
+  const historyDates = [...new Set(dailyHistory.flatMap(({ summaries }) =>
+    summaries.map((summary) => summary.date)
+  ))].sort();
+  const historyChartData = historyDates.map((date) => {
+    const row: Record<string, string | number | null> = {
+      date: new Date(`${date}T12:00:00Z`).toLocaleDateString([], { month: 'short', day: 'numeric' }),
+    };
+    dailyHistory.forEach(({ city, summaries }) => {
+      row[city.location.name] = summaries.find((summary) => summary.date === date)?.avgAqi ?? null;
+    });
+    return row;
+  });
+  const historyLoading = comparedCities.some((city) => {
+    const key = getLocationKey(city.location);
+    return historyByCity[key] === undefined && historyErrors[key] === undefined;
+  });
 
   return (
     <div className="space-y-6">
@@ -353,7 +439,7 @@ export function CompareCities({ initialCity, scale }: CompareCitiesProps) {
               </div>
 
               <div className="pt-3 border-t border-[#1F3045]/60 mt-4 text-[10px] text-[#94A3B8] font-mono">
-                Observed: {formatDateTime(data.timestamp)}
+                Model timestamp: {formatDateTime(data.timestamp)}
               </div>
             </div>
           );
@@ -426,6 +512,53 @@ export function CompareCities({ initialCity, scale }: CompareCitiesProps) {
           </div>
         </div>
       )}
+
+      <div className="bg-[#111C2D] border border-[#1F3045] rounded-2xl p-6 shadow-xl">
+        <h3 className="text-base font-bold text-[#F8FAFC] mb-1">
+          Seven-Day {scale} History by City
+        </h3>
+        <p className="text-xs text-[#94A3B8] mb-4">
+          Daily averages from Open-Meteo CAMS model data; these are estimates, not ground-station readings.
+        </p>
+        {historyChartData.length > 0 ? (
+          <div className="h-72 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={historyChartData} margin={{ top: 10, right: 12, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1F3045" opacity={0.6} />
+                <XAxis dataKey="date" stroke="#94A3B8" fontSize={10} tickLine={false} />
+                <YAxis stroke="#94A3B8" fontSize={10} tickLine={false} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#0D1422',
+                    borderColor: '#1F3045',
+                    borderRadius: '12px',
+                    color: '#F8FAFC',
+                    fontSize: '12px',
+                  }}
+                />
+                <Legend wrapperStyle={{ fontSize: '11px' }} />
+                {dailyHistory.map(({ city }, index) => (
+                  <Line
+                    key={getLocationKey(city.location)}
+                    type="monotone"
+                    dataKey={city.location.name}
+                    stroke={['#22C55E', '#38BDF8', '#F59E0B', '#C084FC'][index % 4]}
+                    strokeWidth={2}
+                    dot={false}
+                    connectNulls={false}
+                  />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        ) : historyLoading ? (
+          <p className="text-sm text-[#94A3B8] py-10 text-center">Loading city history from the public API…</p>
+        ) : (
+          <p className="text-sm text-[#94A3B8] py-10 text-center">
+            Historical comparison is unavailable{Object.values(historyErrors)[0] ? `: ${Object.values(historyErrors)[0]}` : ' for these locations.'}
+          </p>
+        )}
+      </div>
 
       {/* Comparison Methodology Disclaimer */}
       <div className="bg-[#0D1422] border border-[#1F3045] rounded-2xl p-4 text-xs text-[#94A3B8] flex items-start gap-2.5">

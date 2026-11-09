@@ -90,7 +90,7 @@ export function calculateIndPm10Aqi(pm10: number): number {
 }
 
 /**
- * Calculates Indian CPCB Overall AQI
+ * Calculates a PM2.5/PM10-only Indian AQI estimate, not the official CPCB overall AQI.
  */
 export function calculateIndAqi(
   pm25: number | null,

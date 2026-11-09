@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import { LocationInfo, AQIScale } from '../types/airQuality';
-import { GLOBAL_CITIES_AQI } from '../data/globalCitiesAqi';
+import { GLOBAL_CITIES } from '../data/globalCities';
 import { soundFx } from '../utils/audioFx';
 import { Plus, Minus, Layers, RotateCcw, MapPin, Maximize2, Globe2 } from 'lucide-react';
 
@@ -126,7 +126,7 @@ export function MiniMap({
     layer.clearLayers();
 
     // Global pins are navigational; live readings are fetched after a city is selected.
-    GLOBAL_CITIES_AQI.forEach((city) => {
+    GLOBAL_CITIES.forEach((city) => {
       const isSelected =
         Math.abs(city.latitude - selectedLocation.latitude) < 0.1 &&
         Math.abs(city.longitude - selectedLocation.longitude) < 0.1;

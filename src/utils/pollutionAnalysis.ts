@@ -1,5 +1,5 @@
 import { HourlyAirQualityPoint, PollutionSpike, DailyPollutionSummary, AQIScale } from '../types/airQuality';
-import { getCategoryForScale } from './aqiCalculations';
+import { calculateIndAqi, getCategoryForScale } from './aqiCalculations';
 
 /**
  * Calculates percentage change between old and new values.
@@ -105,7 +105,11 @@ export function aggregateDailySummaries(
 
   for (const [date, points] of Object.entries(grouped)) {
     const aqiValues = points
-      .map((p) => (scale === 'EAQI' ? p.europeanAqi : p.usAqi))
+      .map((p) => scale === 'EAQI'
+        ? p.europeanAqi
+        : scale === 'USAQI'
+        ? p.usAqi
+        : calculateIndAqi(p.pm2_5, p.pm10))
       .filter((v): v is number => v !== null && !isNaN(v));
 
     const pm25Values = points
@@ -124,11 +128,11 @@ export function aggregateDailySummaries(
     const avgPm25 =
       pm25Values.length > 0
         ? Math.round((pm25Values.reduce((a, b) => a + b, 0) / pm25Values.length) * 10) / 10
-        : 0;
+        : null;
     const avgPm10 =
       pm10Values.length > 0
         ? Math.round((pm10Values.reduce((a, b) => a + b, 0) / pm10Values.length) * 10) / 10
-        : 0;
+        : null;
 
     const dateObj = new Date(date + 'T00:00:00');
     const dayName = dateObj.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
@@ -142,7 +146,16 @@ export function aggregateDailySummaries(
       minAqi,
       avgPm25,
       avgPm10,
-      dominantPollutant: avgPm25 > avgPm10 * 0.4 ? 'PM2.5' : 'PM10',
+      dominantPollutant:
+        avgPm25 === null && avgPm10 === null
+          ? 'Unavailable'
+          : avgPm25 === null
+          ? 'PM10'
+          : avgPm10 === null
+          ? 'PM2.5'
+          : avgPm25 > avgPm10 * 0.4
+          ? 'PM2.5'
+          : 'PM10',
       category,
     });
   }
