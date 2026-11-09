@@ -1,0 +1,6 @@
+{
+  "name": "BreatheX – Air Quality Intelligence Platform",
+  "description": "Real-time environmental intelligence platform monitoring air pollution, historical trends, forecasts, hotspots, and health advisories powered by Open-Meteo and Gemini AI.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
