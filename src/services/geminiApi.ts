@@ -58,6 +58,13 @@ export async function askBreatheXAI(
     body: JSON.stringify({ message, context: contextPayload }),
   });
 
+  const contentType = res.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) {
+    throw new Error(
+      `AI endpoint returned a non-JSON response (HTTP ${res.status}). Check that the API route is deployed.`
+    );
+  }
+
   const data = await res.json();
   if (!res.ok) {
     throw new Error(data.error || `Server responded with status ${res.status}`);

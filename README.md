@@ -43,6 +43,8 @@ GEMINI_API_KEY=your-key
 PORT=3000
 ```
 
+For a Vercel deployment, add `GEMINI_API_KEY` in the project's Environment Variables settings and redeploy. The `/api/gemini/chat` serverless function uses this key server-side; it is never exposed in browser code.
+
 Start the app:
 
 ```sh
