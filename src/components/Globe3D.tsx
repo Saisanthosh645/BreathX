@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import * as THREE from 'three';
 import { LocationInfo, AQIScale } from '../types/airQuality';
-import { getCategoryForScale } from '../utils/aqiCalculations';
 import { soundFx } from '../utils/audioFx';
 import { GLOBAL_CITIES_AQI, GlobalCityAQI } from '../data/globalCitiesAqi';
 import {
@@ -458,7 +457,6 @@ export function Globe3D({
   const [showDirectory, setShowDirectory] = useState(false);
   const [searchFilter, setSearchFilter] = useState('');
   const [continentFilter, setContinentFilter] = useState<string>('All');
-  const [sortBy, setSortBy] = useState<'highest' | 'lowest' | 'name'>('highest');
   const [isAudioEnabled, setIsAudioEnabled] = useState(false);
   const [hoveredCity, setHoveredCity] = useState<GlobalCityAQI | null>(null);
 
@@ -544,7 +542,7 @@ export function Globe3D({
     }
   }, [showAqiTags]);
 
-  // Filtered and sorted global cities list
+  // The directory is geographic only; live AQI is loaded after selecting a city.
   const filteredCities = useMemo(() => {
     return GLOBAL_CITIES_AQI.filter((c) => {
       const matchSearch =
@@ -552,12 +550,8 @@ export function Globe3D({
         c.country.toLowerCase().includes(searchFilter.toLowerCase());
       const matchContinent = continentFilter === 'All' || c.continent === continentFilter;
       return matchSearch && matchContinent;
-    }).sort((a, b) => {
-      if (sortBy === 'highest') return b.baseAqi - a.baseAqi;
-      if (sortBy === 'lowest') return a.baseAqi - b.baseAqi;
-      return a.name.localeCompare(b.name);
-    });
-  }, [searchFilter, continentFilter, sortBy]);
+    }).sort((a, b) => a.name.localeCompare(b.name));
+  }, [searchFilter, continentFilter]);
 
   // -----------------------------------------------------------------------------------------------
   // Three.js Scene Setup (Mounts once, maintains state, zero flickering or black screens)
@@ -715,9 +709,8 @@ export function Globe3D({
 
     GLOBAL_CITIES_AQI.forEach((city) => {
       const isSelected = city.name === selectedLocation.name;
-      const aqi = isSelected && currentAqi !== null ? currentAqi : city.baseAqi;
-      const cat = getCategoryForScale(aqi, scale);
-      const pinColor = new THREE.Color(cat.color);
+      const hasReading = isSelected && currentAqi !== null;
+      const pinColor = new THREE.Color(hasReading ? '#22C55E' : '#38BDF8');
 
       const pos = latLonToVector3(city.latitude, city.longitude, globeRadius);
       const normal = pos.clone().normalize();
@@ -733,7 +726,7 @@ export function Globe3D({
       const dotMesh = new THREE.Mesh(dotGeo, dotMat);
       dotMesh.position.copy(pos.clone().add(normal.clone().multiplyScalar(0.006)));
       dotMesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), normal);
-      dotMesh.userData = { city, aqi, category: cat.category };
+      dotMesh.userData = { city };
       pinsGroup.add(dotMesh);
 
       // Selected target city gets an expanding pulse ring
@@ -752,12 +745,13 @@ export function Globe3D({
         waveRingsList.push(ringMesh);
       }
 
-      // Floating 3D AQI Pill Badge
-      const sprite = createAqiBadgeSprite(aqi, cat.color);
-      const spritePos = pos.clone().add(normal.clone().multiplyScalar(0.12));
-      sprite.position.copy(spritePos);
-      sprite.userData = { city, aqi, category: cat.category };
-      aqiTagsGroup.add(sprite);
+      if (hasReading) {
+        const sprite = createAqiBadgeSprite(currentAqi, pinColor.getStyle());
+        const spritePos = pos.clone().add(normal.clone().multiplyScalar(0.12));
+        sprite.position.copy(spritePos);
+        sprite.userData = { city };
+        aqiTagsGroup.add(sprite);
+      }
     });
     waveRingsRef.current = waveRingsList;
 
@@ -1002,11 +996,13 @@ export function Globe3D({
               <strong className="text-sm font-bold text-white">{hoveredCity.name}</strong>
               <span className="text-[#94A3B8]">({hoveredCity.country})</span>
               <span className="px-2 py-0.5 rounded bg-[#111C2D] text-emerald-400 font-bold">
-                AQI: {hoveredCity.baseAqi}
+                {hoveredCity.name === selectedLocation.name && currentAqi !== null
+                  ? `AQI: ${currentAqi} (${scale})`
+                  : 'Select this city to load its latest AQI'}
               </span>
             </div>
             <div className="text-[10px] text-[#94A3B8] mt-0.5">
-              Dominant: {hoveredCity.dominant}
+              Open-Meteo CAMS model estimate; not a ground-station reading.
             </div>
           </div>
         </div>
@@ -1070,11 +1066,11 @@ export function Globe3D({
             <span>Showing {filteredCities.length} locations</span>
             <div className="flex items-center gap-1 font-mono">
               <button
-                onClick={() => setSortBy(sortBy === 'highest' ? 'lowest' : 'highest')}
+                onClick={() => setSearchFilter('')}
                 className="hover:text-[#F8FAFC] flex items-center gap-1 cursor-pointer"
               >
                 <ArrowUpDown className="w-3 h-3 text-emerald-400" />
-                <span>{sortBy === 'highest' ? 'Highest AQI' : 'Cleanest Air'}</span>
+                <span>Clear search</span>
               </button>
             </div>
           </div>
@@ -1082,7 +1078,6 @@ export function Globe3D({
           {/* Cities List */}
           <div className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
             {filteredCities.map((city) => {
-              const cat = getCategoryForScale(city.baseAqi, scale);
               const isSelected = selectedLocation.name === city.name;
               return (
                 <div
@@ -1102,17 +1097,11 @@ export function Globe3D({
                     <div className="text-[10px] text-[#94A3B8] flex items-center gap-2 mt-0.5">
                       <span>{city.continent}</span>
                       <span>•</span>
-                      <span className="text-emerald-400 font-mono">Dominant: {city.dominant}</span>
+                      <span className="text-[#94A3B8] font-mono">Select to load live AQI</span>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <span
-                      className="px-2.5 py-1 rounded-lg text-xs font-mono font-extrabold text-white"
-                      style={{ backgroundColor: cat.color }}
-                    >
-                      {city.baseAqi}
-                    </span>
                     <ChevronRight className="w-3.5 h-3.5 text-[#94A3B8]" />
                   </div>
                 </div>

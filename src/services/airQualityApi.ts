@@ -34,7 +34,7 @@ export async function fetchLiveAirQuality(
     return cached.data;
   }
 
-  const url = `${AIR_QUALITY_BASE_URL}?latitude=${location.latitude}&longitude=${location.longitude}&current=european_aqi,us_aqi,pm10,pm2_5,carbon_monoxide,nitrogen_dioxide,sulphur_dioxide,ozone&hourly=pm10,pm2_5,carbon_monoxide,nitrogen_dioxide,sulphur_dioxide,ozone,european_aqi,us_aqi&timezone=auto&past_days=7&forecast_days=4`;
+  const url = `${AIR_QUALITY_BASE_URL}?latitude=${location.latitude}&longitude=${location.longitude}&current=european_aqi,us_aqi,pm10,pm2_5,carbon_monoxide,nitrogen_dioxide,sulphur_dioxide,ozone&hourly=pm10,pm2_5,carbon_monoxide,nitrogen_dioxide,sulphur_dioxide,ozone,european_aqi,us_aqi&timezone=auto&timeformat=iso8601&past_days=30&forecast_days=4`;
 
   let response: Response;
   try {
@@ -156,7 +156,7 @@ export async function fetchHistoricalAirQuality(
     return cached.data;
   }
 
-  const url = `${AIR_QUALITY_BASE_URL}?latitude=${latitude}&longitude=${longitude}&hourly=pm10,pm2_5,carbon_monoxide,nitrogen_dioxide,sulphur_dioxide,ozone,european_aqi,us_aqi&start_date=${startDate}&end_date=${endDate}&timezone=auto`;
+  const url = `${AIR_QUALITY_BASE_URL}?latitude=${latitude}&longitude=${longitude}&hourly=pm10,pm2_5,carbon_monoxide,nitrogen_dioxide,sulphur_dioxide,ozone,european_aqi,us_aqi&start_date=${startDate}&end_date=${endDate}&timezone=auto&timeformat=iso8601`;
 
   const res = await fetch(url);
   if (!res.ok) {

@@ -5,7 +5,7 @@ import {
   AQIScale,
   LocationInfo,
 } from '../types/airQuality';
-import { getCategoryForScale } from '../utils/aqiCalculations';
+import { calculateIndAqi, getCategoryForScale } from '../utils/aqiCalculations';
 import { formatDateTime } from '../utils/dateUtils';
 import { Globe3D } from '../components/Globe3D';
 import { MiniMap } from '../components/MiniMap';
@@ -60,17 +60,42 @@ interface OverviewProps {
 
 export function Overview({
   airData,
+  hourlyData,
   scale,
   onOpenShare,
   onOpenAlerts,
   onNavigateToTab,
   onSelectLocation,
 }: OverviewProps) {
-  if (!airData) return null;
-
   const [mapMode, setMapMode] = useState<'2D' | '3D'>('2D');
   const [trendRange, setTrendRange] = useState<'1D' | '7D' | '14D' | '30D'>('7D');
   const [showDemoModal, setShowDemoModal] = useState(false);
+
+  const trendData = useMemo(() => {
+    const now = Date.now();
+    const rangeMs = { '1D': 24, '7D': 168, '14D': 336, '30D': 720 }[trendRange] * 60 * 60 * 1000;
+    const stepHours = { '1D': 1, '7D': 3, '14D': 6, '30D': 12 }[trendRange];
+    return hourlyData
+      .filter((point) => {
+        const timestamp = new Date(point.time).getTime();
+        return timestamp <= now && timestamp >= now - rangeMs;
+      })
+      .filter((_, index) => index % stepHours === 0)
+      .map((point) => ({
+        date: new Date(point.time).toLocaleString([], trendRange === '1D'
+          ? { hour: '2-digit', minute: '2-digit' }
+          : { month: 'short', day: 'numeric' }),
+        aqi: scale === 'EAQI'
+          ? point.europeanAqi
+          : scale === 'USAQI'
+          ? point.usAqi
+          : calculateIndAqi(point.pm2_5, point.pm10),
+        pm2_5: point.pm2_5,
+        pm10: point.pm10,
+      }));
+  }, [hourlyData, scale, trendRange]);
+
+  if (!airData) return null;
 
   const aqiVal =
     scale === 'EAQI'
@@ -82,26 +107,9 @@ export function Overview({
 
   // Circular gauge calculations (0 to 100/500)
   const maxScale = scale === 'EAQI' ? 100 : 500;
-  const percentage = Math.min(Math.max(((aqiVal ?? 42) / maxScale) * 100, 5), 100);
+  const percentage = Math.min(Math.max(((aqiVal ?? 0) / maxScale) * 100, 0), 100);
   const gaugeStrokeDash = 260;
   const gaugeOffset = gaugeStrokeDash - (percentage / 100) * gaugeStrokeDash;
-
-  // Historical trend data for multi-line chart (matching the reference curve)
-  const trendData = useMemo(() => {
-    const days = ['Nov 3', 'Nov 4', 'Nov 5', 'Nov 6', 'Nov 7', 'Nov 8', 'Nov 9'];
-    const baseAqi = aqiVal ?? 42;
-    return days.map((day, idx) => {
-      const aqiCurve = [65, 48, 85, 58, 95, 74, baseAqi][idx];
-      const pm25Curve = Math.round(aqiCurve * 0.72);
-      const pm10Curve = Math.round(aqiCurve * 0.95);
-      return {
-        date: day,
-        aqi: aqiCurve,
-        pm2_5: pm25Curve,
-        pm10: pm10Curve,
-      };
-    });
-  }, [aqiVal]);
 
   const p = airData.pollutants;
 
@@ -324,7 +332,7 @@ export function Overview({
             {/* Inner Number & Category */}
             <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
               <span className="text-3xl font-black font-mono text-[#F8FAFC] tracking-tight">
-                {aqiVal ?? 42}
+                {aqiVal ?? '--'}
               </span>
               <span className="text-xs font-bold text-emerald-400 mt-0.5">
                 {category.category}
@@ -368,13 +376,12 @@ export function Overview({
             </div>
             <div className="my-1.5">
               <div className="text-lg font-black font-mono text-[#F8FAFC]">
-                {p.pm2_5 !== null ? p.pm2_5 : '12.4'}
+                {p.pm2_5 ?? 'N/A'}
               </div>
               <div className="text-[10px] text-[#64748B] font-mono">µg/m³</div>
             </div>
             <div className="flex items-center gap-1 text-[10px] font-bold text-emerald-400">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              <span>Good</span>
+              <span>{p.pm2_5 !== null ? 'Model estimate' : 'Unavailable'}</span>
             </div>
           </div>
 
@@ -388,13 +395,12 @@ export function Overview({
             </div>
             <div className="my-1.5">
               <div className="text-lg font-black font-mono text-[#F8FAFC]">
-                {p.pm10 !== null ? p.pm10 : '18.7'}
+                {p.pm10 ?? 'N/A'}
               </div>
               <div className="text-[10px] text-[#64748B] font-mono">µg/m³</div>
             </div>
             <div className="flex items-center gap-1 text-[10px] font-bold text-emerald-400">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              <span>Good</span>
+              <span>{p.pm10 !== null ? 'Model estimate' : 'Unavailable'}</span>
             </div>
           </div>
 
@@ -408,13 +414,12 @@ export function Overview({
             </div>
             <div className="my-1.5">
               <div className="text-lg font-black font-mono text-[#F8FAFC]">
-                {p.no2 !== null ? p.no2 : '14.1'}
+                {p.no2 ?? 'N/A'}
               </div>
               <div className="text-[10px] text-[#64748B] font-mono">µg/m³</div>
             </div>
             <div className="flex items-center gap-1 text-[10px] font-bold text-emerald-400">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              <span>Good</span>
+              <span>{p.no2 !== null ? 'Model estimate' : 'Unavailable'}</span>
             </div>
           </div>
 
@@ -428,13 +433,12 @@ export function Overview({
             </div>
             <div className="my-1.5">
               <div className="text-lg font-black font-mono text-[#F8FAFC]">
-                {p.so2 !== null ? p.so2 : '3.2'}
+                {p.so2 ?? 'N/A'}
               </div>
               <div className="text-[10px] text-[#64748B] font-mono">µg/m³</div>
             </div>
             <div className="flex items-center gap-1 text-[10px] font-bold text-emerald-400">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              <span>Good</span>
+              <span>{p.so2 !== null ? 'Model estimate' : 'Unavailable'}</span>
             </div>
           </div>
 
@@ -448,13 +452,12 @@ export function Overview({
             </div>
             <div className="my-1.5">
               <div className="text-lg font-black font-mono text-[#F8FAFC]">
-                {p.co !== null ? (p.co > 100 ? (p.co / 1000).toFixed(1) : p.co) : '0.3'}
+                {p.co !== null ? (p.co / 1000).toFixed(2) : 'N/A'}
               </div>
               <div className="text-[10px] text-[#64748B] font-mono">mg/m³</div>
             </div>
             <div className="flex items-center gap-1 text-[10px] font-bold text-emerald-400">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              <span>Good</span>
+              <span>{p.co !== null ? 'Model estimate' : 'Unavailable'}</span>
             </div>
           </div>
 
@@ -468,13 +471,12 @@ export function Overview({
             </div>
             <div className="my-1.5">
               <div className="text-lg font-black font-mono text-[#F8FAFC]">
-                {p.o3 !== null ? p.o3 : '28.6'}
+                {p.o3 ?? 'N/A'}
               </div>
               <div className="text-[10px] text-[#64748B] font-mono">µg/m³</div>
             </div>
             <div className="flex items-center gap-1 text-[10px] font-bold text-emerald-400">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              <span>Good</span>
+              <span>{p.o3 !== null ? 'Model estimate' : 'Unavailable'}</span>
             </div>
           </div>
         </div>
@@ -491,10 +493,10 @@ export function Overview({
 
             <div className="text-right">
               <div className="text-3xl font-black font-mono text-[#F8FAFC]">
-                {airData.weather?.temperature !== null ? `${Math.round(airData.weather?.temperature ?? 28)}°C` : '28°C'}
+                {airData.weather?.temperature != null ? `${Math.round(airData.weather.temperature)}°C` : 'N/A'}
               </div>
               <div className="text-xs font-semibold text-[#94A3B8]">
-                {airData.weather?.weatherDescription || 'Sunny'}
+                {airData.weather?.weatherDescription || 'Weather unavailable'}
               </div>
             </div>
           </div>
@@ -507,7 +509,7 @@ export function Overview({
                 <span>Humidity</span>
               </div>
               <div className="font-bold text-[#F8FAFC] font-mono mt-0.5">
-                {airData.weather?.humidity !== null ? `${airData.weather?.humidity}%` : '62%'}
+                {airData.weather?.humidity != null ? `${airData.weather.humidity}%` : 'N/A'}
               </div>
             </div>
 
@@ -517,7 +519,7 @@ export function Overview({
                 <span>Wind</span>
               </div>
               <div className="font-bold text-[#F8FAFC] font-mono mt-0.5">
-                {airData.weather?.windSpeed !== null ? `${airData.weather?.windSpeed} km/h` : '12 km/h'}
+                {airData.weather?.windSpeed != null ? `${airData.weather.windSpeed} km/h` : 'N/A'}
               </div>
             </div>
 
@@ -527,7 +529,7 @@ export function Overview({
                 <span>UV Index</span>
               </div>
               <div className="font-bold text-[#F8FAFC] font-mono mt-0.5">
-                6 (High)
+                N/A
               </div>
             </div>
           </div>

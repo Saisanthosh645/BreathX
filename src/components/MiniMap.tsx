@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import { LocationInfo, AQIScale } from '../types/airQuality';
-import { GLOBAL_CITIES_AQI, GlobalCityAQI } from '../data/globalCitiesAqi';
-import { getCategoryForScale } from '../utils/aqiCalculations';
+import { GLOBAL_CITIES_AQI } from '../data/globalCitiesAqi';
 import { soundFx } from '../utils/audioFx';
 import { Plus, Minus, Layers, RotateCcw, MapPin, Maximize2, Globe2 } from 'lucide-react';
 
@@ -25,7 +24,6 @@ export function MiniMap({
   const baseTileLayerRef = useRef<L.TileLayer | null>(null);
   const labelsTileLayerRef = useRef<L.TileLayer | null>(null);
   const [mapStyle, setMapStyle] = useState<'satellite' | 'dark'>('satellite');
-  const [activeCity, setActiveCity] = useState<GlobalCityAQI | null>(null);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -127,24 +125,12 @@ export function MiniMap({
 
     layer.clearLayers();
 
-    // Add global cities
+    // Global pins are navigational; live readings are fetched after a city is selected.
     GLOBAL_CITIES_AQI.forEach((city) => {
-      const cat = getCategoryForScale(city.baseAqi, scale);
       const isSelected =
         Math.abs(city.latitude - selectedLocation.latitude) < 0.1 &&
         Math.abs(city.longitude - selectedLocation.longitude) < 0.1;
-
-      // Glow color mapping
-      const glowColor =
-        city.baseAqi <= 50
-          ? '#22c55e'
-          : city.baseAqi <= 100
-          ? '#eab308'
-          : city.baseAqi <= 150
-          ? '#f97316'
-          : city.baseAqi <= 200
-          ? '#ef4444'
-          : '#a855f7';
+      const glowColor = isSelected ? '#22c55e' : '#38bdf8';
 
       const html = `
         <div class="relative group cursor-pointer flex items-center justify-center -translate-x-1/2 -translate-y-1/2">
@@ -176,11 +162,7 @@ export function MiniMap({
             <span>${city.name}</span>
             <span style="font-size: 9px; color: #94A3B8;">${city.countryCode}</span>
           </div>
-          <div style="margin: 6px 0; display: flex; align-items: baseline; gap: 5px;">
-            <span style="font-size: 17px; font-weight: 900; color: ${glowColor}; font-family: monospace;">${city.baseAqi}</span>
-            <span style="font-size: 10px; font-weight: 700; color: ${glowColor};">${cat.category}</span>
-          </div>
-          <div style="font-size: 9px; color: #CBD5E1; margin-bottom: 6px;">Dominant: ${city.dominant}</div>
+          <div style="font-size: 10px; color: #CBD5E1; margin: 6px 0;">Select to load the latest CAMS model estimate.</div>
           <button id="btn-select-${city.id}" style="width: 100%; background: #22c55e; color: #000; font-size: 9px; font-weight: 800; padding: 5px 8px; border-radius: 6px; border: none; cursor: pointer; box-shadow: 0 2px 6px rgba(34,197,94,0.4);">
             Inspect City
           </button>
@@ -193,7 +175,6 @@ export function MiniMap({
       });
 
       marker.on('popupopen', () => {
-        setActiveCity(city);
         soundFx.playHoverChirp();
         const btn = document.getElementById(`btn-select-${city.id}`);
         if (btn) {
@@ -217,7 +198,7 @@ export function MiniMap({
 
       layer.addLayer(marker);
     });
-  }, [scale, selectedLocation, onSelectLocation]);
+  }, [selectedLocation, onSelectLocation]);
 
   const handleZoomIn = () => {
     soundFx.playClickTone();

@@ -41,14 +41,10 @@ export function Forecast({ hourlyData, currentData, scale }: ForecastProps) {
   // Extract strictly forecast points (future points)
   const now = Date.now();
   const forecastPoints = hourlyData.filter(
-    (pt) => new Date(pt.time).getTime() >= now
+    (pt) => pt.isForecast === true && new Date(pt.time).getTime() >= now
   );
 
-  // If few future points, take the last 48-72 hours of hourlyData and mark as forecast window
-  const activeForecastPoints =
-    forecastPoints.length >= 12
-      ? forecastPoints
-      : hourlyData.slice(-48).map((p) => ({ ...p, isForecast: true }));
+  const activeForecastPoints = forecastPoints;
 
   const next24h = activeForecastPoints.slice(0, 24);
   const next3Days = aggregateDailySummaries(activeForecastPoints, scale).slice(0, 4);
@@ -171,7 +167,11 @@ export function Forecast({ hourlyData, currentData, scale }: ForecastProps) {
           </div>
         </div>
 
-        <div className="h-72 w-full">
+        {activeForecastPoints.length === 0 ? (
+          <p className="text-sm text-[#94A3B8] py-12 text-center">
+            Forecast data is currently unavailable. Historical readings are not shown as forecasts.
+          </p>
+        ) : <div className="h-72 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1F3045" opacity={0.6} />
@@ -196,7 +196,7 @@ export function Forecast({ hourlyData, currentData, scale }: ForecastProps) {
               />
             </LineChart>
           </ResponsiveContainer>
-        </div>
+        </div>}
       </div>
 
       {/* 2. Forecasted PM2.5 and PM10 Trends */}
@@ -217,7 +217,11 @@ export function Forecast({ hourlyData, currentData, scale }: ForecastProps) {
           </div>
         </div>
 
-        <div className="h-72 w-full">
+        {activeForecastPoints.length === 0 ? (
+          <p className="text-sm text-[#94A3B8] py-12 text-center">
+            Forecast data is currently unavailable.
+          </p>
+        ) : <div className="h-72 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1F3045" opacity={0.6} />
@@ -251,7 +255,7 @@ export function Forecast({ hourlyData, currentData, scale }: ForecastProps) {
               />
             </LineChart>
           </ResponsiveContainer>
-        </div>
+        </div>}
       </div>
 
       {/* 3. 3-Day Daily Outlook Summary Cards */}
@@ -259,7 +263,11 @@ export function Forecast({ hourlyData, currentData, scale }: ForecastProps) {
         <h3 className="text-base font-bold text-[#F8FAFC] mb-3">
           Daily Forecast Outlook (Next 3–4 Days)
         </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {next3Days.length === 0 ? (
+          <p className="text-sm text-[#94A3B8] py-8 text-center">
+            No daily forecast is available for this location right now.
+          </p>
+        ) : <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {next3Days.map((day) => (
             <div
               key={day.date}
@@ -274,7 +282,7 @@ export function Forecast({ hourlyData, currentData, scale }: ForecastProps) {
                   <span className="text-[10px] font-mono text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded">
                     PREDICTED
                   </span>
-                </div>
+                </div>}
 
                 <div className="flex items-baseline gap-2 my-2">
                   <span className="text-3xl font-extrabold font-mono text-[#F8FAFC]">

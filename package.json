@@ -9,6 +9,7 @@
     "start": "node dist-server/server.js",
     "preview": "vite preview",
     "clean": "rm -rf dist dist-server",
+    "test": "tsx --test src/utils/*.test.ts",
     "lint": "tsc --noEmit"
   },
   "dependencies": {

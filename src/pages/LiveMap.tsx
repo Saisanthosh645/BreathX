@@ -4,7 +4,6 @@ import { MapView } from '../components/MapView';
 import { Globe3D } from '../components/Globe3D';
 import { FEATURED_CITIES } from '../services/geocodingApi';
 import { GLOBAL_CITIES_AQI, GlobalCityAQI } from '../data/globalCitiesAqi';
-import { getCategoryForScale } from '../utils/aqiCalculations';
 import { soundFx } from '../utils/audioFx';
 import {
   MapPin,
@@ -237,7 +236,7 @@ export function LiveMap({
                 Global AQI Directory — All Places ({displayedHubs.length} Active Hubs)
               </h3>
               <p className="text-xs text-[#94A3B8]">
-                Real-time and baseline air quality index values mapped across all continents
+                Select a city to fetch its current Open-Meteo CAMS model estimate. These are not ground-station observations.
               </p>
             </div>
           </div>
@@ -278,7 +277,6 @@ export function LiveMap({
         {/* Global Cities Cards Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5">
           {displayedHubs.map((city) => {
-            const cat = getCategoryForScale(city.baseAqi, scale);
             const isSelected = currentLocation.name === city.name;
             return (
               <div
@@ -304,21 +302,16 @@ export function LiveMap({
                       </div>
                     </div>
 
-                    <span
-                      className="px-2.5 py-1 rounded-xl text-xs font-mono font-black text-white shadow-md shrink-0"
-                      style={{ backgroundColor: cat.color }}
-                    >
-                      {city.baseAqi}
-                    </span>
                   </div>
 
                   <p className="text-[11px] text-[#94A3B8] line-clamp-2 mt-1 leading-relaxed">
-                    {city.description}
+                    {city.country} • Select this location to load its current air-quality estimate.
                   </p>
+
                 </div>
 
                 <div className="mt-3 pt-2.5 border-t border-[#1F3045]/60 flex items-center justify-between text-[11px] font-mono text-[#94A3B8]">
-                  <span>Dominant: <strong className="text-[#F8FAFC]">{city.dominant}</strong></span>
+                  <span>Location directory</span>
                   <span className="text-[#38BDF8] group-hover:translate-x-0.5 transition-transform">
                     Fly to &rarr;
                   </span>
